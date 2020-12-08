@@ -412,7 +412,7 @@ func (s *Sheet) SetColWidth(min, max int, width float64) {
 // This can be use as the default scale function for the autowidth.
 // It works well with the default font sizes.
 func DefaultAutoWidth(s string) float64 {
-	return (float64(strings.Count(s, "")) + 3.0 ) * 1.2
+	return (float64(strings.Count(s, "")) + 3.0) * 1.2
 }
 
 // Tries to guess the best width for a column, based on the largest
@@ -420,7 +420,7 @@ func DefaultAutoWidth(s string) float64 {
 func (s *Sheet) SetColAutoWidth(colIndex int, width func (string) float64) error {
 	s.mustBeOpen()
 	largestWidth := 0.0
-	rowVisitor := func (r *Row) error {
+	rowVisitor := func(r *Row) error {
 		cell := r.GetCell(colIndex)
 		value, err := cell.FormattedValue()
 		if err != nil {
@@ -515,6 +515,7 @@ func (s *Sheet) makeSheetView(worksheet *xlsxWorksheet) {
 }
 
 func (s *Sheet) makeSheetFormatPr(worksheet *xlsxWorksheet) {
+	worksheet.SheetFormatPr.DefaultRowHeight = 12.85
 	if s.SheetFormat.DefaultRowHeight != 0 {
 		worksheet.SheetFormatPr.DefaultRowHeight = s.SheetFormat.DefaultRowHeight
 	}
