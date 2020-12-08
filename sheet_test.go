@@ -1,7 +1,6 @@
 package xlsx
 
 import (
-	"archive/zip"
 	"bytes"
 	"encoding/xml"
 	"io/ioutil"
@@ -10,6 +9,7 @@ import (
 	"testing"
 
 	qt "github.com/frankban/quicktest"
+	"github.com/klauspost/compress/zip"
 )
 
 func TestSheet(t *testing.T) {

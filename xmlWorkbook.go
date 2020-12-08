@@ -1,10 +1,11 @@
 package xlsx
 
 import (
-	"archive/zip"
 	"encoding/xml"
 	"fmt"
 	"io"
+
+	"github.com/klauspost/compress/zip"
 )
 
 const (

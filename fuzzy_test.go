@@ -3,7 +3,7 @@
 package xlsx
 
 import (
-	"archive/zip"
+
 	"bytes"
 	"encoding/xml"
 	"flag"
@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/klauspost/compress/zip"
 	. "gopkg.in/check.v1"
 )
 

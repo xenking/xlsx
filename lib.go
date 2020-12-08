@@ -1,7 +1,6 @@
 package xlsx
 
 import (
-	"archive/zip"
 	"bytes"
 	"encoding/xml"
 	"errors"
@@ -12,6 +11,8 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+
+	"github.com/klauspost/compress/zip"
 )
 
 const (

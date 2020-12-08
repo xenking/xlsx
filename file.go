@@ -1,7 +1,6 @@
 package xlsx
 
 import (
-	"archive/zip"
 	"bytes"
 	"encoding/xml"
 	"errors"
@@ -11,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+	"github.com/klauspost/compress/zip"
 )
 
 // File is a high level structure providing a slice of Sheet structs
