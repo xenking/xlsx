@@ -298,7 +298,7 @@ func (dvr *DiskVRow) ForEachCell(cvf CellVisitorFunc, option ...CellVisitorOptio
 				return err
 			}
 		}
-		
+
 		err = fn(ci, cell)
 		if err != nil {
 			return err
@@ -347,19 +347,27 @@ func UseDiskVCellStore(f *File) {
 
 // NewDiskVCellStore is a CellStoreConstructor than returns a
 // CellStore in terms of DiskV.
-func NewDiskVCellStore() (CellStore, error) {
+func NewDiskVCellStore(options ...CellStoreOptions) (CellStore, error) {
 	cs := &DiskVCellStore{
 		buf: bytes.NewBuffer([]byte{}),
 	}
+	var tempDir string
+	var maxCacheSize uint64 = 1024 * 1024
+	if len(options) > 0 {
+		tempDir = options[0].TempDir
+		if options[0].MaxCacheSize > 0 {
+			maxCacheSize = options[0].MaxCacheSize
+		}
+	}
 
-	dir, err := ioutil.TempDir("", "cellstore"+generator.Hex128())
+	dir, err := ioutil.TempDir(tempDir, "cellstore"+generator.Hex128())
 	if err != nil {
 		return nil, err
 	}
 	cs.baseDir = dir
 	cs.store = diskv.New(diskv.Options{
 		BasePath:     dir,
-		CacheSizeMax: 1024 * 1024, // 1MB for file. TODO make this configurable
+		CacheSizeMax: maxCacheSize,
 	})
 	return cs, nil
 }

@@ -144,7 +144,7 @@ func UseMemoryCellStore(f *File) {
 }
 
 // NewMemoryCellStore returns a pointer to a newly allocated MemoryCellStore
-func NewMemoryCellStore() (CellStore, error) {
+func NewMemoryCellStore(...CellStoreOptions) (CellStore, error) {
 	cs := &MemoryCellStore{
 		rows: make(map[string]*Row),
 	}

@@ -38,13 +38,17 @@ func NewSheet(name string) (*Sheet, error) {
 
 // NewSheetWithCellStore constructs a Sheet, backed by a CellStore,
 // for which you must provide the constructor function.
-func NewSheetWithCellStore(name string, constructor CellStoreConstructor) (*Sheet, error) {
+func NewSheetWithCellStore(name string, constructor CellStoreConstructor, options ...CellStoreOptions) (*Sheet, error) {
 	sheet := &Sheet{
 		Name: name,
 		Cols: &ColStore{},
 	}
 	var err error
-	sheet.cellStore, err = constructor()
+	if len(options) > 0 {
+		sheet.cellStore, err = constructor(options[0])
+	} else {
+		sheet.cellStore, err = constructor()
+	}
 	if err != nil {
 		return nil, fmt.Errorf("NewSheetWithCellStore: %w", err)
 	}
@@ -417,7 +421,7 @@ func DefaultAutoWidth(s string) float64 {
 
 // Tries to guess the best width for a column, based on the largest
 // cell content. A scale function needs to be provided.
-func (s *Sheet) SetColAutoWidth(colIndex int, width func (string) float64) error {
+func (s *Sheet) SetColAutoWidth(colIndex int, width func(string) float64) error {
 	s.mustBeOpen()
 	largestWidth := 0.0
 	rowVisitor := func(r *Row) error {

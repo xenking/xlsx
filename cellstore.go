@@ -26,7 +26,12 @@ type CellStore interface {
 // CellStoreConstructor defines the signature of a function that will
 // be used to return a new instance of the CellStore implmentation,
 // you must pass this into
-type CellStoreConstructor func() (CellStore, error)
+type CellStoreConstructor func(...CellStoreOptions) (CellStore, error)
+
+type CellStoreOptions struct {
+	TempDir      string
+	MaxCacheSize uint64
+}
 
 // CellStoreRow is the interface used to interact with the currently loaded Row from the CellStore.  Different backends can choose whether to hold the whole row in memory, or persist and load the cell
 type CellStoreRow interface {
