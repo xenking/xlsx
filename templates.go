@@ -3,23 +3,23 @@
 
 package xlsx
 
-const TEMPLATE__RELS_DOT_RELS = `<?xml version="1.0" encoding="UTF-8"?>
+var TEMPLATE__RELS_DOT_RELS = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
   <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-</Relationships>`
+</Relationships>`)
 
-const TEMPLATE_DOCPROPS_APP = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+var TEMPLATE_DOCPROPS_APP = []byte(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
   <TotalTime>0</TotalTime>
   <Application>Go XLSX</Application>
-</Properties>`
+</Properties>`)
 
-const TEMPLATE_DOCPROPS_CORE = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"></cp:coreProperties>`
+var TEMPLATE_DOCPROPS_CORE = []byte(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"></cp:coreProperties>`)
 
-const TEMPLATE_XL_THEME_THEME = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+var TEMPLATE_XL_THEME_THEME = []byte(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office-Design">
   <a:themeElements>
     <a:clrScheme name="Office">
@@ -336,4 +336,4 @@ const TEMPLATE_XL_THEME_THEME = `<?xml version="1.0" encoding="UTF-8" standalone
     </a:lnDef>
   </a:objectDefaults>
   <a:extraClrSchemeLst/>
-</a:theme>`
+</a:theme>`)

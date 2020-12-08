@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+
+	"github.com/valyala/bytebufferpool"
 )
 
 var defaultTheme int = 1
@@ -582,6 +584,52 @@ func (styles *xlsxStyleSheet) Marshal() (string, error) {
 	return result + "</styleSheet>", nil
 }
 
+func (styles *xlsxStyleSheet) MarshalBytes() ([]byte, error) {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	b.Write(xmlHeader)
+	b.WriteString(`<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">`)
+
+	if styles.NumFmts != nil {
+		xNumFmts, err := styles.NumFmts.MarshalBytes()
+		if err != nil {
+			return nil, err
+		}
+		b.Write(xNumFmts)
+	}
+
+	outputFontMap := make(map[int]int)
+	xfonts := styles.Fonts.MarshalBytes(outputFontMap)
+	b.Write(xfonts)
+
+	outputFillMap := make(map[int]int)
+	xfills := styles.Fills.MarshalBytes(outputFillMap)
+	b.Write(xfills)
+
+	outputBorderMap := make(map[int]int)
+	xborders := styles.Borders.MarshalBytes(outputBorderMap)
+	b.Write(xborders)
+
+	if styles.CellStyleXfs != nil {
+		xcellStyleXfs := styles.CellStyleXfs.MarshalBytes(outputBorderMap, outputFillMap, outputFontMap)
+		b.Write(xcellStyleXfs)
+	}
+
+	xcellXfs := styles.CellXfs.MarshalBytes(outputBorderMap, outputFillMap, outputFontMap)
+
+	b.Write(xcellXfs)
+
+	if styles.CellStyles != nil {
+		xcellStyles, err := styles.CellStyles.MarshalBytes()
+		if err != nil {
+			return nil, err
+		}
+		b.Write(xcellStyles)
+	}
+	b.WriteString("</styleSheet>")
+	return b.B, nil
+}
+
 type xlsxDXFs struct {
 	Count int `xml:"count,attr"`
 }
@@ -611,6 +659,26 @@ func (numFmts *xlsxNumFmts) Marshal() (result string, err error) {
 	return
 }
 
+func (numFmts *xlsxNumFmts) MarshalBytes() (result []byte, err error) {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	if numFmts.Count > 0 {
+		b.WriteString(`<numFmts count="`)
+		b.WriteString(strconv.Itoa(numFmts.Count))
+		b.WriteString(`">`)
+		for _, numFmt := range numFmts.NumFmt {
+			var xNumFmt []byte
+			xNumFmt, err = numFmt.MarshalBytes()
+			if err != nil {
+				return
+			}
+			b.Write(xNumFmt)
+		}
+		b.WriteString(`</numFmts>`)
+	}
+	return b.B, nil
+}
+
 // xlsxNumFmt directly maps the numFmt element in the namespace
 // http://schemas.openxmlformats.org/spreadsheetml/2006/main -
 // currently I have not checked it for completeness - it does as much
@@ -627,6 +695,21 @@ func (numFmt *xlsxNumFmt) Marshal() (result string, err error) {
 	}
 
 	return fmt.Sprintf(`<numFmt numFmtId="%d" formatCode="%s"/>`, numFmt.NumFmtId, formatCode), nil
+}
+
+func (numFmt *xlsxNumFmt) MarshalBytes() ([]byte, error) {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	formatCode := bytebufferpool.Get()
+	bytebufferpool.Put(formatCode)
+	if err := xml.EscapeText(formatCode, []byte(numFmt.FormatCode)); err != nil {
+		return nil, err
+	}
+	b.WriteString(`<numFmt numFmtId="`)
+	b.WriteString(strconv.Itoa(numFmt.NumFmtId))
+	b.WriteString(`" formatCode="`)
+	b.Write(formatCode.B)
+	return b.B, nil
 }
 
 // xlsxFonts directly maps the fonts element in the namespace
@@ -647,7 +730,7 @@ func (fonts *xlsxFonts) addFont(font xlsxFont) {
 }
 
 func (fonts *xlsxFonts) Marshal(outputFontMap map[int]int) (result string, err error) {
-	emittedCount := 0
+	var emittedCount int
 	subparts := ""
 
 	for i, font := range fonts.Font {
@@ -668,6 +751,31 @@ func (fonts *xlsxFonts) Marshal(outputFontMap map[int]int) (result string, err e
 		result += `</fonts>`
 	}
 	return
+}
+
+func (fonts *xlsxFonts) MarshalBytes(outputFontMap map[int]int) []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	subparts := bytebufferpool.Get()
+	bytebufferpool.Put(subparts)
+	emittedCount := 0
+
+	for i, font := range fonts.Font {
+		xfont := font.MarshalBytes()
+		if len(xfont) > 0 {
+			outputFontMap[i] = emittedCount
+			emittedCount++
+			subparts.Write(xfont)
+		}
+	}
+	if emittedCount > 0 {
+		b.WriteString(`<fonts count="`)
+		b.WriteString(strconv.Itoa(fonts.Count))
+		b.WriteString(`">`)
+		b.Write(subparts.B)
+		b.WriteString(`</fonts>`)
+	}
+	return b.B
 }
 
 // xlsxFont directly maps the font element in the namespace
@@ -738,6 +846,61 @@ func (font *xlsxFont) Marshal() (result string, err error) {
 	return result + "</font>", nil
 }
 
+func (font *xlsxFont) MarshalBytes() []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	b.WriteString("<font>")
+	if font.Sz.Val != "" {
+		b.WriteString(`<sz val="`)
+		b.WriteString(font.Sz.Val)
+		b.WriteString(`"/>`)
+	}
+	if font.Name.Val != "" {
+		b.WriteString(`<name val="`)
+		b.WriteString(font.Name.Val)
+		b.WriteString(`"/>`)
+	}
+	if font.Family.Val != "" {
+		b.WriteString(`<family val="`)
+		b.WriteString(font.Family.Val)
+		b.WriteString(`"/>`)
+	}
+	if font.Charset.Val != "" {
+		b.WriteString(`<charset val="`)
+		b.WriteString(font.Charset.Val)
+		b.WriteString(`"/>`)
+	}
+	if font.Color.RGB != "" {
+		b.WriteString(`<color rgb="`)
+		b.WriteString(font.Color.RGB)
+		b.WriteString(`"/>`)
+	}
+	if font.Color.Theme != nil {
+		b.WriteString(`<color theme="`)
+		b.WriteString(strconv.Itoa(*font.Color.Theme))
+		b.WriteString(`"/>`)
+	}
+	if font.Scheme != nil && font.Scheme.Val != "" {
+		b.WriteString(`<scheme val="`)
+		b.WriteString(font.Scheme.Val)
+		b.WriteString(`"/>`)
+	}
+	if font.B != nil {
+		b.WriteString("<b/>")
+	}
+	if font.I != nil {
+		b.WriteString("<i/>")
+	}
+	if font.U != nil {
+		b.WriteString("<u/>")
+	}
+	if font.Strike != nil {
+		b.WriteString("<strike/>")
+	}
+	b.WriteString("</font>")
+	return b.Bytes()
+}
+
 // xlsxVal directly maps the val element in the namespace
 // http://schemas.openxmlformats.org/spreadsheetml/2006/main -
 // currently I have not checked it for completeness - it does as much
@@ -788,6 +951,32 @@ func (fills *xlsxFills) Marshal(outputFillMap map[int]int) (string, error) {
 	return result, nil
 }
 
+func (fills *xlsxFills) MarshalBytes(outputFillMap map[int]int) []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	subparts := bytebufferpool.Get()
+	bytebufferpool.Put(subparts)
+	var emittedCount int
+
+	for i, fill := range fills.Fill {
+		xfill := fill.MarshalBytes()
+
+		if len(xfill) > 0 {
+			outputFillMap[i] = emittedCount
+			emittedCount++
+			subparts.Write(xfill)
+		}
+	}
+	if emittedCount > 0 {
+		b.WriteString(`<fills count="`)
+		b.WriteString(strconv.Itoa(emittedCount))
+		b.WriteString(`">`)
+		b.Write(subparts.B)
+		b.WriteString(`</fills>`)
+	}
+	return b.B
+}
+
 // xlsxFill directly maps the fill element in the namespace
 // http://schemas.openxmlformats.org/spreadsheetml/2006/main -
 // currently I have not checked it for completeness - it does as much
@@ -813,6 +1002,18 @@ func (fill *xlsxFill) Marshal() (result string, err error) {
 		result += `</fill>`
 	}
 	return
+}
+
+func (fill *xlsxFill) MarshalBytes() []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	if fill.PatternFill.PatternType != "" {
+		b.WriteString(`<fill>`)
+		xpatternFill := fill.PatternFill.MarshalBytes()
+		b.Write(xpatternFill)
+		b.WriteString(`</fill>`)
+	}
+	return b.B
 }
 
 // xlsxPatternFill directly maps the patternFill element in the namespace
@@ -848,6 +1049,37 @@ func (patternFill *xlsxPatternFill) Marshal() (result string, err error) {
 	result += subparts
 	result += terminator
 	return
+}
+
+func (patternFill *xlsxPatternFill) MarshalBytes() []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	b.WriteString(`<patternFill patternType="`)
+	b.WriteString(patternFill.PatternType)
+	b.WriteByte('"')
+
+	ending := `/>`
+	terminator := ""
+	subparts := bytebufferpool.Get()
+	bytebufferpool.Put(subparts)
+	if patternFill.FgColor.RGB != "" {
+		ending = `>`
+		terminator = "</patternFill>"
+		subparts.WriteString(`<fgColor rgb="`)
+		subparts.WriteString(patternFill.FgColor.RGB)
+		subparts.WriteString(`"/>`)
+	}
+	if patternFill.BgColor.RGB != "" {
+		ending = `>`
+		terminator = "</patternFill>"
+		subparts.WriteString(`<bgColor rgb="`)
+		subparts.WriteString(patternFill.BgColor.RGB)
+		subparts.WriteString(`"/>`)
+	}
+	b.WriteString(ending)
+	b.Write(subparts.B)
+	b.WriteString(terminator)
+	return b.B
 }
 
 // xlsxColor is a common mapping used for both the fgColor and bgColor
@@ -905,6 +1137,30 @@ func (borders *xlsxBorders) Marshal(outputBorderMap map[int]int) (result string,
 	return
 }
 
+func (borders *xlsxBorders) MarshalBytes(outputBorderMap map[int]int) []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	subparts := bytebufferpool.Get()
+	bytebufferpool.Put(subparts)
+	var emittedCount int
+	for i, border := range borders.Border {
+		xborder := border.MarshalBytes()
+		if len(xborder) > 0 {
+			outputBorderMap[i] = emittedCount
+			emittedCount++
+			subparts.Write(xborder)
+		}
+	}
+	if emittedCount > 0 {
+		b.WriteString(`<borders count="`)
+		b.WriteString(strconv.Itoa(emittedCount))
+		b.WriteString(`">"`)
+		b.Write(subparts.B)
+		b.WriteString(`</borders>`)
+	}
+	return b.B
+}
+
 // xlsxBorder directly maps the border element in the namespace
 // http://schemas.openxmlformats.org/spreadsheetml/2006/main -
 // currently I have not checked it for completeness - it does as much
@@ -934,6 +1190,33 @@ func (border *xlsxBorder) marshalBorderLine(line xlsxLine, name string) string {
 	return subparts
 }
 
+func (border *xlsxBorder) marshalBorderLineBytes(line xlsxLine, name string) []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	if line.Style == "" {
+		b.WriteByte('<')
+		b.WriteString(name)
+		b.WriteByte('/')
+		b.WriteByte('>')
+		return b.B
+	}
+	b.WriteByte('<')
+	b.WriteString(name)
+	b.WriteString(` style="`)
+	b.WriteString(line.Style)
+	b.WriteString(`">`)
+	if line.Color.RGB != "" {
+		b.WriteString(`<color rgb="`)
+		b.WriteString(line.Color.RGB)
+		b.WriteString(`"/>`)
+	}
+	b.WriteByte('<')
+	b.WriteByte('/')
+	b.WriteString(name)
+	b.WriteByte('>')
+	return b.B
+}
+
 // To get borders to work correctly in Excel, you have to always start with an
 // empty set of borders. There was logic in this function that would strip out
 // empty elements, but unfortunately that would cause the border to fail.
@@ -946,6 +1229,18 @@ func (border *xlsxBorder) Marshal() (result string, err error) {
 	result += subparts
 	result += `</border>`
 	return
+}
+
+func (border *xlsxBorder) MarshalBytes() []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	b.WriteString(`<border>`)
+	b.Write(border.marshalBorderLineBytes(border.Left, "left"))
+	b.Write(border.marshalBorderLineBytes(border.Right, "right"))
+	b.Write(border.marshalBorderLineBytes(border.Top, "top"))
+	b.Write(border.marshalBorderLineBytes(border.Bottom, "bottom"))
+	b.WriteString(`</border>`)
+	return b.B
 }
 
 // xlsxLine directly maps the line style element in the namespace
@@ -981,6 +1276,26 @@ func (cellStyles *xlsxCellStyles) Marshal() (result string, err error) {
 		result += `</cellStyles>`
 	}
 	return
+
+}
+
+func (cellStyles *xlsxCellStyles) MarshalBytes() ([]byte, error) {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	if cellStyles.Count > 0 {
+		b.WriteString(`<cellStyles count="`)
+		b.WriteString(strconv.Itoa(cellStyles.Count))
+		b.WriteString(`">`)
+		for _, cellStyle := range cellStyles.CellStyle {
+			xCellStyle, err := xml.Marshal(cellStyle)
+			if err != nil {
+				return nil, err
+			}
+			b.Write(xCellStyle)
+		}
+		b.WriteString(`</cellStyles>`)
+	}
+	return b.B, nil
 
 }
 
@@ -1025,6 +1340,22 @@ func (cellStyleXfs *xlsxCellStyleXfs) Marshal(outputBorderMap, outputFillMap, ou
 	return
 }
 
+func (cellStyleXfs *xlsxCellStyleXfs) MarshalBytes(outputBorderMap, outputFillMap, outputFontMap map[int]int) []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	if cellStyleXfs.Count > 0 {
+		b.WriteString(`<cellStyleXfs count="`)
+		b.WriteString(strconv.Itoa(cellStyleXfs.Count))
+		b.WriteString(`">`)
+		for _, xf := range cellStyleXfs.Xf {
+			xxf := xf.MarshalBytes(outputBorderMap, outputFillMap, outputFontMap)
+			b.Write(xxf)
+		}
+		b.WriteString(`</cellStyleXfs>`)
+	}
+	return b.B
+}
+
 // xlsxCellXfs directly maps the cellXfs element in the namespace
 // http://schemas.openxmlformats.org/spreadsheetml/2006/main -
 // currently I have not checked it for completeness - it does as much
@@ -1053,6 +1384,22 @@ func (cellXfs *xlsxCellXfs) Marshal(outputBorderMap, outputFillMap, outputFontMa
 		result += `</cellXfs>`
 	}
 	return
+}
+
+func (cellXfs *xlsxCellXfs) MarshalBytes(outputBorderMap, outputFillMap, outputFontMap map[int]int) []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	if cellXfs.Count > 0 {
+		b.WriteString(`<cellXfs count="`)
+		b.WriteString(strconv.Itoa(cellXfs.Count))
+		b.WriteString(`">`)
+		for _, xf := range cellXfs.Xf {
+			xxf := xf.MarshalBytes(outputBorderMap, outputFillMap, outputFontMap)
+			b.Write(xxf)
+		}
+		b.WriteString(`</cellXfs>`)
+	}
+	return b.B
 }
 
 // xlsxXf directly maps the xf element in the namespace
@@ -1102,6 +1449,41 @@ func (xf *xlsxXf) Marshal(outputBorderMap, outputFillMap, outputFontMap map[int]
 	}
 	return result + xAlignment + "</xf>", nil
 }
+func (xf *xlsxXf) MarshalBytes(outputBorderMap, outputFillMap, outputFontMap map[int]int) []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	b.WriteString(`<xf applyAlignment="`)
+	b.WriteString(strconv.Itoa(bool2Int(xf.ApplyAlignment)))
+	b.WriteString(`" applyBorder="`)
+	b.WriteString(strconv.Itoa(bool2Int(xf.ApplyBorder)))
+	b.WriteString(`" applyFont="`)
+	b.WriteString(strconv.Itoa(bool2Int(xf.ApplyFont)))
+	b.WriteString(`" applyFill="`)
+	b.WriteString(strconv.Itoa(bool2Int(xf.ApplyFill)))
+	b.WriteString(`" applyNumberFormat="`)
+	b.WriteString(strconv.Itoa(bool2Int(xf.ApplyNumberFormat)))
+	b.WriteString(`" applyProtection="`)
+	b.WriteString(strconv.Itoa(bool2Int(xf.ApplyProtection)))
+	b.WriteString(`" borderId="`)
+	b.WriteString(strconv.Itoa(outputBorderMap[xf.BorderId]))
+	b.WriteString(`" fillId="`)
+	b.WriteString(strconv.Itoa(outputFillMap[xf.FillId]))
+	b.WriteString(`" fontId="`)
+	b.WriteString(strconv.Itoa(outputFontMap[xf.FontId]))
+	b.WriteString(` numFmtId="`)
+	b.WriteString(strconv.Itoa(xf.NumFmtId))
+	b.WriteByte('"')
+	if xf.XfId != nil {
+		b.WriteString(` xfId="`)
+		b.WriteString(strconv.Itoa(*xf.XfId))
+		b.WriteByte('"')
+	}
+	b.WriteByte('>')
+	xAlignment := xf.Alignment.MarshalBytes()
+	b.Write(xAlignment)
+	b.WriteString("</xf>")
+	return b.B
+}
 
 type xlsxAlignment struct {
 	Horizontal   string `xml:"horizontal,attr"`
@@ -1129,6 +1511,30 @@ func (alignment *xlsxAlignment) Marshal() (result string, err error) {
 		alignment.Vertical = "bottom"
 	}
 	return fmt.Sprintf(`<alignment horizontal="%s" indent="%d" shrinkToFit="%b" textRotation="%d" vertical="%s" wrapText="%b"/>`, alignment.Horizontal, alignment.Indent, bool2Int(alignment.ShrinkToFit), alignment.TextRotation, alignment.Vertical, bool2Int(alignment.WrapText)), nil
+}
+func (alignment *xlsxAlignment) MarshalBytes() []byte {
+	b := bytebufferpool.Get()
+	bytebufferpool.Put(b)
+	if alignment.Horizontal == "" {
+		alignment.Horizontal = "general"
+	}
+	if alignment.Vertical == "" {
+		alignment.Vertical = "bottom"
+	}
+	b.WriteString(`<alignment horizontal="`)
+	b.WriteString(alignment.Horizontal)
+	b.WriteString(` indent="`)
+	b.WriteString(strconv.Itoa(alignment.Indent))
+	b.WriteString(`" shrinkToFit="`)
+	b.WriteString(strconv.Itoa(bool2Int(alignment.ShrinkToFit)))
+	b.WriteString(`" textRotation="`)
+	b.WriteString(strconv.Itoa(alignment.TextRotation))
+	b.WriteString(`" vertical="`)
+	b.WriteString(alignment.Vertical)
+	b.WriteString(`" wrapText="`)
+	b.WriteString(strconv.Itoa(bool2Int(alignment.WrapText)))
+	b.WriteString(`"/>`)
+	return b.B
 }
 
 func bool2Int(b bool) int {

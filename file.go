@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
 	"github.com/klauspost/compress/zip"
 )
 
@@ -265,6 +266,22 @@ func replaceRelationshipsNameSpace(workbookMarshal string) string {
 	return strings.Replace(newWorkbook, oldXmlns, newXmlns, 1)
 }
 
+var (
+	oldWorkbook = []byte(`xmlns:relationships="http://schemas.openxmlformats.org/officeDocument/2006/relationships" relationships:id`)
+	oldXmlns = []byte(`<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">`)
+	newXmlns = []byte(`<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`)
+
+)
+
+func replaceRelationshipsNameSpaceBytes(workbookMarshal []byte) []byte {
+	newWorkbook := bytes.Replace(workbookMarshal, oldWorkbook, []byte(`r:id`), -1)
+	// Dirty hack to fix issues #63 and #91; encoding/xml currently
+	// "doesn't allow for additional namespaces to be defined in the
+	// root element of the document," as described by @tealeg in the
+	// comments for #63.
+	return bytes.Replace(newWorkbook, oldXmlns, newXmlns, 1)
+}
+
 func addRelationshipNameSpaceToWorksheet(worksheetMarshal string) string {
 	oldXmlns := `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">`
 	newXmlns := `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`
@@ -362,11 +379,11 @@ func (f *File) MakeStreamParts() (map[string]string, error) {
 		return parts, err
 	}
 
-	parts["_rels/.rels"] = TEMPLATE__RELS_DOT_RELS
-	parts["docProps/app.xml"] = TEMPLATE_DOCPROPS_APP
+	parts["_rels/.rels"] = string(TEMPLATE__RELS_DOT_RELS)
+	parts["docProps/app.xml"] = string(TEMPLATE_DOCPROPS_APP)
 	// TODO - do this properly, modification and revision information
-	parts["docProps/core.xml"] = TEMPLATE_DOCPROPS_CORE
-	parts["xl/theme/theme1.xml"] = TEMPLATE_XL_THEME_THEME
+	parts["docProps/core.xml"] = string(TEMPLATE_DOCPROPS_CORE)
+	parts["xl/theme/theme1.xml"] = string(TEMPLATE_XL_THEME_THEME)
 
 	xSST := refTable.makeXLSXSST()
 	parts["xl/sharedStrings.xml"], err = marshal(xSST)
@@ -394,34 +411,37 @@ func (f *File) MakeStreamParts() (map[string]string, error) {
 	return parts, nil
 }
 
+var xmlHeader = []byte{60, 63, 120, 109, 108, 32, 118, 101, 114, 115, 105, 111, 110, 61, 34, 49, 46, 48, 34, 32, 101, 110, 99, 111, 100, 105, 110, 103, 61, 34, 85, 84, 70, 45, 56, 34, 63, 62, 10}
+
 // MarshallParts constructs a map of file name to XML content representing the file
 // in terms of the structure of an XLSX file.
 func (f *File) MarshallParts(zipWriter *zip.Writer) error {
-	var refTable *RefTable = NewSharedStringRefTable()
+	var refTable = NewSharedStringRefTable()
 	refTable.isWrite = true
-	var workbookRels WorkBookRels = make(WorkBookRels)
+	var workbookRels = make(WorkBookRels)
 	var err error
 	var workbook xlsxWorkbook
-	var types xlsxTypes = MakeDefaultContentTypes()
+	var types = MakeDefaultContentTypes()
 
 	wrap := func(err error) error {
 		return fmt.Errorf("MarshallParts: %w", err)
 	}
 
-	marshal := func(thing interface{}) (string, error) {
+	marshal := func(thing interface{}) ([]byte, error) {
 		body, err := xml.Marshal(thing)
 		if err != nil {
-			return "", fmt.Errorf("xml.Marshal: %w", err)
+			return nil, fmt.Errorf("xml.Marshal: %w", err)
 		}
-		return xml.Header + string(body), nil
+		body = append(body[:0], append(xmlHeader, body[0:]...)...)
+		return body, nil
 	}
 
-	writePart := func(partName, part string) error {
+	writePart := func(partName string, part []byte) error {
 		w, err := zipWriter.Create(partName)
 		if err != nil {
 			return fmt.Errorf("zipwriter.Create(%s): %w", partName, err)
 		}
-		_, err = w.Write([]byte(part))
+		_, err = w.Write(part)
 		if err != nil {
 			return fmt.Errorf("zipwriter.Write(%s): %w", part, err)
 		}
@@ -493,7 +513,7 @@ func (f *File) MarshallParts(zipWriter *zip.Writer) error {
 	if err != nil {
 		return err
 	}
-	workbookMarshal = replaceRelationshipsNameSpace(workbookMarshal)
+	workbookMarshal = replaceRelationshipsNameSpaceBytes(workbookMarshal)
 	err = writePart("xl/workbook.xml", workbookMarshal)
 	if err != nil {
 		return err
@@ -548,7 +568,7 @@ func (f *File) MarshallParts(zipWriter *zip.Writer) error {
 		return err
 	}
 
-	styles, err := f.styles.Marshal()
+	styles, err := f.styles.MarshalBytes()
 	if err != nil {
 		return err
 	}
