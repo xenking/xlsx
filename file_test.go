@@ -926,6 +926,35 @@ func TestFile(t *testing.T) {
 		c.Assert(s.Hidden, qt.Equals, true)
 	})
 
+	csRunO(c, "TestMarshalFileWithHiddenRow", func(c *qt.C, option FileOption) {
+		var f *File
+		f = NewFile(option)
+		sheet1, _ := f.AddSheet("MySheet")
+		row1 := sheet1.AddRow()
+		cell1 := row1.AddCell()
+		cell1.SetString("A cell!")
+		sheetHidden, _ := f.AddSheet("SomeHiddenSheet")
+		sheetHidden.Hidden = false
+		row2 := sheetHidden.AddRow()
+		row2.Hidden = true
+		cell2 := row2.AddCell()
+		cell2.SetString("A hidden cell!")
+
+		path := filepath.Join(c.Mkdir(), "test.xlsx")
+		err := f.Save(path)
+		c.Assert(err, qt.IsNil)
+
+		xlsxFile, err := OpenFile(path, option)
+		c.Assert(err, qt.IsNil)
+
+		s, ok := xlsxFile.Sheet["SomeHiddenSheet"]
+		r, err :=s.Row(0)
+		c.Assert(err, qt.IsNil)
+
+		c.Assert(ok, qt.Equals, true)
+		c.Assert(r.Hidden, qt.Equals, true)
+	})
+
 	// We can save a File as a valid XLSX file at a given path.
 	csRunO(c, "TestSaveFileWithHyperlinks", func(c *qt.C, option FileOption) {
 		tmpPath, err := ioutil.TempDir("", "testsavefilewithhyperlinks")

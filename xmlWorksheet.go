@@ -648,10 +648,14 @@ func (worksheet *xlsxWorksheet) makeXlsxRowFromRow(row *Row, styles *xlsxStyleSh
 	xRow := &xlsxRow{}
 	xRow.R = row.num + 1
 	if row.isCustom {
-		xRow.CustomHeight = true
-		xRow.Ht = fmt.Sprintf("%g", row.GetHeight())
+		h := row.GetHeight()
+		if h > 0 {
+			xRow.CustomHeight = true
+			xRow.Ht = fmt.Sprintf("%g", h)
+		}
 	}
 	xRow.OutlineLevel = row.GetOutlineLevel()
+	xRow.Hidden = row.Hidden
 
 	err := row.ForEachCell(func(cell *Cell) error {
 		var XfId int
