@@ -8,7 +8,7 @@ import (
 
 func TestRedisCellStore(t *testing.T) {
 	c := qt.New(t)
-	opt := RedisCellStoreOption{RedisAddr: "/var/run/redis/redis-server.sock"}
+	opt := RedisCellStoreOption{RedisAddr: "localhost"}
 	c.Run("RowNotFoundError", func(c *qt.C) {
 		RedisCs, err := NewRedisCellStoreConstructor(opt)()
 		c.Assert(err, qt.IsNil)

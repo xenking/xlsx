@@ -335,19 +335,18 @@ func UseRedisCellStore(options ...RedisCellStoreOption) FileOption {
 
 type RedisCellStoreOption struct {
 	RedisAddr string
+	CommandTimeout time.Duration
+	DialTimeout time.Duration
 }
 
 // NewRedisCellStoreConstructor is a CellStoreConstructor than returns a
 // CellStore in terms of Redis.
-func NewRedisCellStoreConstructor(options ...RedisCellStoreOption) CellStoreConstructor {
+func NewRedisCellStoreConstructor(options RedisCellStoreOption) CellStoreConstructor {
 	return func() (CellStore, error) {
 		cs := &RedisCellStore{
 			buf: bytes.NewBuffer([]byte{}),
 		}
-		if len(options) == 0 {
-			return nil, errors.New("empty options")
-		}
-		cs.client = redis.NewClient(options[0].RedisAddr, 5*time.Millisecond, time.Second)
+		cs.client = redis.NewClient(options.RedisAddr, options.CommandTimeout, options.DialTimeout)
 		return cs, nil
 	}
 }

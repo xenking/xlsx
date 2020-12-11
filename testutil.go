@@ -15,7 +15,7 @@ func csRunC(c *qt.C, description string, test func(c *qt.C, constructor CellStor
 			test(c, NewDiskVCellStoreConstructor())
 		})
 		c.Run("RedisCellStore", func(c *qt.C) {
-			test(c, NewRedisCellStoreConstructor(RedisCellStoreOption{RedisAddr: "/var/run/redis/redis-server.sock"}))
+			test(c, NewRedisCellStoreConstructor(RedisCellStoreOption{RedisAddr: "localhost"}))
 		})
 	})
 }
@@ -30,7 +30,7 @@ func csRunO(c *qt.C, description string, test func(c *qt.C, option FileOption)) 
 			test(c, UseDiskVCellStore)
 		})
 		c.Run("RedisCellStore", func(c *qt.C) {
-			test(c, UseRedisCellStore(RedisCellStoreOption{RedisAddr: "/var/run/redis/redis-server.sock"}))
+			test(c, UseRedisCellStore(RedisCellStoreOption{RedisAddr: "localhost"}))
 		})
 	})
 }
