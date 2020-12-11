@@ -2,6 +2,7 @@ package xlsx
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Row represents a single Row in the current Sheet.
@@ -84,6 +85,28 @@ func (r *Row) key() string {
 
 func (r *Row) makeCellKeyRowPrefix() string {
 	return fmt.Sprintf("%s:%06d", r.Sheet.Name, r.num)
+}
+
+func (r *Row) makeRowNum() string {
+	return fmt.Sprintf("%06d", r.num)
+}
+
+func (r *Row) makeCellKeyPrefix(colIdx int) string {
+	return fmt.Sprintf("%s:%06d", r.Sheet.Name, colIdx)
+}
+
+func makeSheetRowsStore(sheetName string) string {
+	var b strings.Builder
+	b.WriteString(sheetName)
+	b.WriteString(":rows")
+	return b.String()
+}
+
+func makeSheetCellsStore(sheetName string) string {
+	var b strings.Builder
+	b.WriteString(sheetName)
+	b.WriteString(":cells")
+	return b.String()
 }
 
 // GetCell returns the Cell at a given column index, creating it if it doesn't exist.

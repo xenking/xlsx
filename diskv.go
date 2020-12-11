@@ -389,7 +389,7 @@ func (cs *DiskVCellStore) ReadRow(key string, s *Sheet) (*Row, error) {
 		}
 		return nil, err
 	}
-	r, err := readRow(bytes.NewReader(b), cs.store, s)
+	r, err := readDiskVRow(bytes.NewReader(b), cs.store, s)
 	if err != nil {
 		return nil, err
 	}
@@ -1127,7 +1127,7 @@ func writeCell(buf *bytes.Buffer, c *Cell) error {
 	return nil
 }
 
-func readRow(reader *bytes.Reader, store *diskv.Diskv, sheet *Sheet) (*Row, error) {
+func readDiskVRow(reader *bytes.Reader, store *diskv.Diskv, sheet *Sheet) (*Row, error) {
 	var err error
 
 	r := &Row{
