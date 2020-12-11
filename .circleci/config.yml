@@ -1,0 +1,24 @@
+version: 2.1
+workflows:
+  main:
+    jobs:
+      - build
+
+jobs:
+  build:
+    working_directory: /go/src/github.com/xenking/redis
+    docker:
+      - image: "circleci/redis:5-alpine"
+    steps:
+      - checkout
+      - go/load-cache
+      - go/mod-download
+      - go/save-cache
+      - go/test:
+          covermode: atomic
+          failfast: true
+          race: true
+
+orbs:
+  go: circleci/go@1.5.0
+
