@@ -9,10 +9,10 @@ func csRunC(c *qt.C, description string, test func(c *qt.C, constructor CellStor
 
 	c.Run(description, func(c *qt.C) {
 		c.Run("MemoryCellStore", func(c *qt.C) {
-			test(c, NewMemoryCellStore)
+			test(c, NewMemoryCellStoreConstructor())
 		})
 		c.Run("DiskVCellStore", func(c *qt.C) {
-			test(c, NewDiskVCellStore)
+			test(c, NewDiskVCellStoreConstructor())
 		})
 	})
 }

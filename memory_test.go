@@ -10,7 +10,7 @@ func TestMemoryCellStore(t *testing.T) {
 	c := qt.New(t)
 
 	c.Run("RowNotFoundError", func(c *qt.C) {
-		memoryCs, err := NewMemoryCellStore()
+		memoryCs, err := NewMemoryCellStoreConstructor()()
 		c.Assert(err, qt.IsNil)
 		cs, ok := memoryCs.(*MemoryCellStore)
 		c.Assert(ok, qt.Equals, true)
@@ -24,7 +24,7 @@ func TestMemoryCellStore(t *testing.T) {
 	})
 
 	c.Run("Write and Read Row", func(c *qt.C) {
-		mCs, err := NewMemoryCellStore()
+		mCs, err := NewMemoryCellStoreConstructor()()
 		c.Assert(err, qt.IsNil)
 		cs, ok := mCs.(*MemoryCellStore)
 		c.Assert(ok, qt.Equals, true)

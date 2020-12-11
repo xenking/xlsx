@@ -50,7 +50,7 @@ func NewFile(options ...FileOption) *File {
 		Sheets:               make([]*Sheet, 0),
 		DefinedNames:         make([]*xlsxDefinedName, 0),
 		rowLimit:             NoRowLimit,
-		cellStoreConstructor: NewMemoryCellStore,
+		cellStoreConstructor: NewMemoryCellStoreConstructor(),
 	}
 	for _, opt := range options {
 		opt(f)

@@ -339,40 +339,47 @@ type DiskVCellStore struct {
 
 // UseDiskVCellStore is a FileOption that makes all Sheet instances
 // for a File use DiskV as their backing store.  You can use this
-// option when handling very large Sheets that would otherwise riquire
+// option when handling very large Sheets that would otherwise require
 // allocating vast amounts of memory.
 func UseDiskVCellStore(f *File) {
-	f.cellStoreConstructor = NewDiskVCellStore
+	f.cellStoreConstructor = NewDiskVCellStoreConstructor()
 }
 
-// NewDiskVCellStore is a CellStoreConstructor than returns a
+type DiskVCellStoreOption struct {
+	TempDir string
+	MaxCacheSize uint64
+}
+
+// NewDiskVCellStoreConstructor is a CellStoreConstructor than returns a
 // CellStore in terms of DiskV.
-func NewDiskVCellStore(options ...CellStoreOptions) (CellStore, error) {
-	cs := &DiskVCellStore{
-		buf: bytes.NewBuffer([]byte{}),
-	}
-	var tempDir string
-	var maxCacheSize uint64 = 1024 * 1024
-	if len(options) > 0 {
-		tempDir = options[0].TempDir
-		if options[0].MaxCacheSize > 0 {
-			maxCacheSize = options[0].MaxCacheSize
+func NewDiskVCellStoreConstructor(options ...DiskVCellStoreOption) CellStoreConstructor {
+	return func() (CellStore, error) {
+		cs := &DiskVCellStore{
+			buf: bytes.NewBuffer([]byte{}),
 		}
-	}
+		var tempDir string
+		var maxCacheSize uint64 = 1024 * 1024
+		if len(options) > 0 {
+			tempDir = options[0].TempDir
+			if options[0].MaxCacheSize > 0 {
+				maxCacheSize = options[0].MaxCacheSize
+			}
+		}
 
-	dir, err := ioutil.TempDir(tempDir, "cellstore"+generator.Hex128())
-	if err != nil {
-		return nil, err
+		dir, err := ioutil.TempDir(tempDir, "cellstore"+generator.Hex128())
+		if err != nil {
+			return nil, err
+		}
+		cs.baseDir = dir
+		cs.store = diskv.New(diskv.Options{
+			BasePath:     dir,
+			CacheSizeMax: maxCacheSize,
+		})
+		return cs, nil
 	}
-	cs.baseDir = dir
-	cs.store = diskv.New(diskv.Options{
-		BasePath:     dir,
-		CacheSizeMax: maxCacheSize,
-	})
-	return cs, nil
 }
 
-// ReadRow reads a row from the persistant store, identified by key,
+// ReadRow reads a row from the persistent store, identified by key,
 // into memory and returns it, with the provided Sheet set as the Row's Sheet.
 func (cs *DiskVCellStore) ReadRow(key string, s *Sheet) (*Row, error) {
 	b, err := cs.store.Read(key)
@@ -390,7 +397,7 @@ func (cs *DiskVCellStore) ReadRow(key string, s *Sheet) (*Row, error) {
 }
 
 // MoveRow moves a Row from one position in a Sheet (index) to another
-// within the persistant store.
+// within the persistent store.
 func (cs *DiskVCellStore) MoveRow(r *Row, index int) error {
 
 	cell := r.cellStoreRow.(*DiskVRow).currentCell
@@ -463,7 +470,7 @@ func (cs *DiskVCellStore) MoveRow(r *Row, index int) error {
 }
 
 // RemoveRow removes a Row from the Sheet's representation in the
-// persistant store.
+// persistent store.
 func (cs *DiskVCellStore) RemoveRow(key string) error {
 	keys := cs.store.KeysPrefix(key, nil)
 	for key := range keys {

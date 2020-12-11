@@ -12,7 +12,7 @@ func TestDiskVCellStore(t *testing.T) {
 	c := qt.New(t)
 
 	c.Run("RowNotFoundError", func(c *qt.C) {
-		diskvCs, err := NewDiskVCellStore()
+		diskvCs, err := NewDiskVCellStoreConstructor()()
 		c.Assert(err, qt.IsNil)
 		cs, ok := diskvCs.(*DiskVCellStore)
 		c.Assert(ok, qt.Equals, true)
@@ -25,7 +25,7 @@ func TestDiskVCellStore(t *testing.T) {
 	})
 
 	c.Run("Write and Read Empty Row", func(c *qt.C) {
-		diskvCs, err := NewDiskVCellStore()
+		diskvCs, err := NewDiskVCellStoreConstructor()()
 		c.Assert(err, qt.IsNil)
 		cs, ok := diskvCs.(*DiskVCellStore)
 		c.Assert(ok, qt.Equals, true)

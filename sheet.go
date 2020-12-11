@@ -33,22 +33,18 @@ type Sheet struct {
 // NewSheet constructs a Sheet with the default CellStore and returns
 // a pointer to it.
 func NewSheet(name string) (*Sheet, error) {
-	return NewSheetWithCellStore(name, NewMemoryCellStore)
+	return NewSheetWithCellStore(name, NewMemoryCellStoreConstructor())
 }
 
 // NewSheetWithCellStore constructs a Sheet, backed by a CellStore,
 // for which you must provide the constructor function.
-func NewSheetWithCellStore(name string, constructor CellStoreConstructor, options ...CellStoreOptions) (*Sheet, error) {
+func NewSheetWithCellStore(name string, constructor CellStoreConstructor) (*Sheet, error) {
 	sheet := &Sheet{
 		Name: name,
 		Cols: &ColStore{},
 	}
 	var err error
-	if len(options) > 0 {
-		sheet.cellStore, err = constructor(options[0])
-	} else {
-		sheet.cellStore, err = constructor()
-	}
+	sheet.cellStore, err = constructor()
 	if err != nil {
 		return nil, fmt.Errorf("NewSheetWithCellStore: %w", err)
 	}

@@ -138,17 +138,22 @@ type MemoryCellStore struct {
 // keeping the contents of each Sheet in memory.  This is faster than
 // using a disk backed store, but can easily use a large amount of
 // memory and, if you exhaust the available system memory, it'll
-// actualy be slower than using a disk backed store (e.g. DiskV).
+// actually be slower than using a disk backed store (e.g. DiskV).
 func UseMemoryCellStore(f *File) {
-	f.cellStoreConstructor = NewMemoryCellStore
+	f.cellStoreConstructor = NewMemoryCellStoreConstructor()
 }
 
-// NewMemoryCellStore returns a pointer to a newly allocated MemoryCellStore
-func NewMemoryCellStore(...CellStoreOptions) (CellStore, error) {
-	cs := &MemoryCellStore{
-		rows: make(map[string]*Row),
+type MemoryCellStoreOption struct {
+}
+
+// NewMemoryCellStoreConstructor returns a pointer to a newly allocated MemoryCellStore
+func NewMemoryCellStoreConstructor(...MemoryCellStoreOption) CellStoreConstructor {
+	return func() (CellStore, error) {
+		cs := &MemoryCellStore{
+			rows: make(map[string]*Row),
+		}
+		return cs, nil
 	}
-	return cs, nil
 }
 
 // Close is nullOp for the MemoryCellStore, but we have to comply with
