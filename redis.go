@@ -2,7 +2,6 @@ package xlsx
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -327,9 +326,9 @@ type RedisCellStore struct {
 // for a File use Redis as their backing client.  You can use this
 // option when handling very large Sheets that would otherwise require
 // allocating vast amounts of memory.
-func UseRedisCellStore(options ...RedisCellStoreOption) FileOption {
+func UseRedisCellStore(options RedisCellStoreOption) FileOption {
 	return func(f *File) {
-		f.cellStoreConstructor = NewRedisCellStoreConstructor(options...)
+		f.cellStoreConstructor = NewRedisCellStoreConstructor(options)
 	}
 }
 
