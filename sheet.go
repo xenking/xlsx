@@ -57,6 +57,10 @@ func (s *Sheet) Close() {
 	s.cellStore = nil
 }
 
+func (s *Sheet) StoreRowsCount() int {
+	return s.cellStore.RowsCount()
+}
+
 func (s *Sheet) getState() string {
 	if s.Hidden {
 		return "hidden"
