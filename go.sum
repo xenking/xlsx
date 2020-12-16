@@ -23,8 +23,8 @@ github.com/shabbyrobe/xmlwriter v0.0.0-20200208144257-9fca06d00ffa h1:2cO3RojjYl
 github.com/shabbyrobe/xmlwriter v0.0.0-20200208144257-9fca06d00ffa/go.mod h1:Yjr3bdWaVWyME1kha7X0jsz3k2DgXNa1Pj3XGyUAbx8=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
-github.com/xenking/redis v1.4.1 h1:r9XceAQtd81vbLdgAjYun21vbp/BJAY0opnJ6jA2IfA=
-github.com/xenking/redis v1.4.1/go.mod h1:j9X5lgDRRQdH3nF21RgQvo+lUDtxgUcFbdWXa7RZ1Rw=
+github.com/xenking/redis v1.4.2 h1:xFjE6fZYdhWLwdzlVap8iNLtHDx1btMdbNvLQcrY/3k=
+github.com/xenking/redis v1.4.2/go.mod h1:j9X5lgDRRQdH3nF21RgQvo+lUDtxgUcFbdWXa7RZ1Rw=
 golang.org/x/text v0.3.2 h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=
 golang.org/x/text v0.3.2/go.mod h1:bEr9sfX3Q8Zfm5fL9x+3itogRgK3+ptLWKqgva+5dAk=
 golang.org/x/text v0.3.3 h1:cokOdA+Jmi5PJGXLlLllQSgYigAEfHXJAERHVMaCc2k=

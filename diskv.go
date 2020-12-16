@@ -500,6 +500,15 @@ func (cs *DiskVCellStore) Close() error {
 
 }
 
+func (cs *DiskVCellStore) RowsCount() int {
+	keys := cs.store.KeysPrefix("cellstore", nil)
+	i := 0
+	for range keys {
+		i++
+	}
+	return i
+}
+
 func writeBool(buf *bytes.Buffer, b bool) error {
 	if b {
 		err := buf.WriteByte(TRUE)

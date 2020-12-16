@@ -143,11 +143,8 @@ func UseMemoryCellStore(f *File) {
 	f.cellStoreConstructor = NewMemoryCellStoreConstructor()
 }
 
-type MemoryCellStoreOption struct {
-}
-
 // NewMemoryCellStoreConstructor returns a pointer to a newly allocated MemoryCellStore
-func NewMemoryCellStoreConstructor(...MemoryCellStoreOption) CellStoreConstructor {
+func NewMemoryCellStoreConstructor() CellStoreConstructor {
 	return func() (CellStore, error) {
 		cs := &MemoryCellStore{
 			rows: make(map[string]*Row),
@@ -215,6 +212,10 @@ func (mcs *MemoryCellStore) MakeRowWithLen(sheet *Sheet, len int) *Row {
 // MakeRow returns an empty Row
 func (mcs *MemoryCellStore) MakeRow(sheet *Sheet) *Row {
 	return makeMemoryRow(sheet).row
+}
+
+func (mcs *MemoryCellStore) RowsCount() int {
+	return len(mcs.rows)
 }
 
 // Extract the row key from a provided cell key

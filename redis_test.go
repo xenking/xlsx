@@ -114,8 +114,8 @@ func TestRedisCellStore(t *testing.T) {
 		dv.Error = sPtr("error")
 		dv.PromptTitle = sPtr("prompttitle")
 		dv.Prompt = sPtr("prompt")
-
 		cell := row.AddCell()
+		cell.modified = true
 		cell.Value = "value"
 		cell.formula = "formula"
 		cell.style = s

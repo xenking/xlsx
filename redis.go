@@ -54,7 +54,7 @@ func (rr *RedisRow) readCell(index int) (*Cell, error) {
 	var cellType int
 	var hasStyle, hasDataValidation bool
 	var cellIsNil bool
-	key := rr.row.makeCellKeyPrefix(index)
+	key := rr.CellKey(index)
 	b, err := rr.client.HGET(key, rr.row.makeRowNum())
 	if err != nil {
 		return nil, err
@@ -204,8 +204,8 @@ func (rr *RedisRow) writeCell(c *Cell) error {
 			return err
 		}
 	}
-	key := rr.row.makeCellKeyPrefix(c.num)
-	_, err = rr.client.ZADDString(makeSheetCellsStore(rr.row.Sheet.Name), int64(c.num), key)
+	key := rr.CellKey(c.num)
+	_, err = rr.client.ZADDString(rr.SheetCellsName(), int64(c.num), key)
 	if err != nil {
 		return err
 	}
@@ -270,7 +270,7 @@ func (rr *RedisRow) ForEachCell(cvf CellVisitorFunc, option ...CellVisitorOption
 
 	for ci := 0; ci <= rr.maxCol; ci++ {
 		var cell *Cell
-		key := rr.row.makeCellKeyPrefix(ci)
+		key := rr.CellKey(ci)
 		b, err := rr.client.HGET(key, rr.row.makeRowNum())
 		if err != nil {
 			// If the file doesn't exist that's fine, it was just an empty cell.
@@ -314,6 +314,27 @@ func (rr *RedisRow) CellCount() int {
 	return rr.maxCol + 1
 }
 
+func (rr *RedisRow) SheetRowsName() string {
+	var b strings.Builder
+	b.WriteString(rr.row.Sheet.Name)
+	b.WriteString(":rows")
+	return b.String()
+}
+
+func (rr *RedisRow) SheetCellsName() string {
+	var b strings.Builder
+	b.WriteString(rr.row.Sheet.Name)
+	b.WriteString(":cells")
+	return b.String()
+}
+
+func (rr *RedisRow) CellKey(colIdx int) string {
+	var b strings.Builder
+	b.WriteString(rr.row.Sheet.Name)
+	b.WriteString(fmt.Sprintf("%06d", colIdx))
+	return b.String()
+}
+
 // RedisCellStore is an implementation of the CellStore interface, backed by Redis
 type RedisCellStore struct {
 	sheetName string
@@ -333,9 +354,9 @@ func UseRedisCellStore(options RedisCellStoreOption) FileOption {
 }
 
 type RedisCellStoreOption struct {
-	RedisAddr string
+	RedisAddr      string
 	CommandTimeout time.Duration
-	DialTimeout time.Duration
+	DialTimeout    time.Duration
 }
 
 // NewRedisCellStoreConstructor is a CellStoreConstructor than returns a
@@ -353,14 +374,18 @@ func NewRedisCellStoreConstructor(options RedisCellStoreOption) CellStoreConstru
 // ReadRow reads a row from the persistent client, identified by key,
 // into memory and returns it, with the provided Sheet set as the Row's Sheet.
 func (cs *RedisCellStore) ReadRow(key string, s *Sheet) (*Row, error) {
-	if len(cs.sheetName) == 0 && s != nil {
-		cs.sheetName = s.Name
-	}
 	str := strings.Split(key, ":")
 	if len(str) != 2 {
 		return nil, NewRowNotFoundError(key, "no such row")
 	}
-	b, err := cs.client.HGET(makeSheetRowsStore(s.Name), str[1])
+	if len(cs.sheetName) == 0 {
+		if s != nil {
+			cs.sheetName = s.Name
+		} else {
+			cs.sheetName = str[0]
+		}
+	}
+	b, err := cs.client.HGET(cs.SheetRowsName(), str[1])
 	if err != nil {
 		return nil, err
 	}
@@ -393,8 +418,8 @@ func (cs *RedisCellStore) MoveRow(r *Row, index int) error {
 		if err := writeCell(cs.buf, cell); err != nil {
 			return err
 		}
-		key := r.makeCellKeyPrefix(cell.num)
-		_, err := cs.client.ZADDString(makeSheetCellsStore(r.Sheet.Name), int64(cell.num), key)
+		key := cs.CellKey(cell.num)
+		_, err := cs.client.ZADDString(cs.SheetCellsName(), int64(cell.num), key)
 		if err != nil {
 			return err
 		}
@@ -402,16 +427,16 @@ func (cs *RedisCellStore) MoveRow(r *Row, index int) error {
 			return err
 		}
 	}
-	oldKey := r.makeRowNum()
-	newKey := strconv.Itoa(index)
-	val, err := cs.client.HGET(makeSheetRowsStore(r.Sheet.Name), newKey)
+	oldIdx := r.makeRowNum()
+	newIdx := strconv.Itoa(index)
+	val, err := cs.client.HGET(cs.SheetRowsName(), newIdx)
 	if err != nil {
 		return err
 	}
 	if val != nil {
 		return fmt.Errorf("Target index for row (%d) would overwrite a row already exists", index)
 	}
-	_, err = cs.client.HDEL(makeSheetRowsStore(r.Sheet.Name), oldKey)
+	_, err = cs.client.HDEL(cs.SheetRowsName(), oldIdx)
 	if err != nil {
 		return err
 	}
@@ -419,14 +444,14 @@ func (cs *RedisCellStore) MoveRow(r *Row, index int) error {
 	var cBuf bytes.Buffer
 	err = r.ForEachCell(func(c *Cell) error {
 		cBuf.Reset()
-		k := r.makeCellKeyPrefix(c.num)
+		k := cs.CellKey(c.num)
 		c.Row = r
 		err = writeCell(&cBuf, c)
-		_, err = cs.client.HSET(k, newKey, cBuf.Bytes())
+		_, err = cs.client.HSET(k, newIdx, cBuf.Bytes())
 		if err != nil {
 			return err
 		}
-		_, err = cs.client.HDEL(k, oldKey)
+		_, err = cs.client.HDEL(k, oldIdx)
 		return err
 	}, SkipEmptyCells)
 	if err != nil {
@@ -437,7 +462,7 @@ func (cs *RedisCellStore) MoveRow(r *Row, index int) error {
 	if err != nil {
 		return err
 	}
-	_, err = cs.client.HSET(makeSheetRowsStore(r.Sheet.Name), newKey, cs.buf.Bytes())
+	_, err = cs.client.HSET(cs.SheetRowsName(), newIdx, cs.buf.Bytes())
 	return err
 }
 
@@ -448,14 +473,17 @@ func (cs *RedisCellStore) RemoveRow(key string) error {
 	if len(k) != 2 {
 		return NewRowNotFoundError(key, "no such row")
 	}
-	cells, err := cs.client.ZRANGEString(makeSheetCellsStore(k[0]), 0, -1)
+	if len(cs.sheetName) == 0 {
+		cs.sheetName = k[0]
+	}
+	cells, err := cs.client.ZRANGEString(cs.SheetCellsName(), 0, -1)
 	for _, cell := range cells {
 		_, err = cs.client.HDEL(cell, k[1])
 		if err != nil {
 			return err
 		}
 	}
-	_, err = cs.client.HDEL(k[0], k[1])
+	_, err = cs.client.HDEL(cs.SheetRowsName(), k[1])
 	if err != nil {
 		return err
 	}
@@ -476,6 +504,11 @@ func (cs *RedisCellStore) MakeRowWithLen(sheet *Sheet, len int) *Row {
 	mr := makeRedisRow(sheet, cs.client)
 	mr.maxCol = len - 1
 	return mr.row
+}
+
+func (cs *RedisCellStore) RowsCount() int {
+	length, _ := cs.client.HLEN(cs.SheetRowsName())
+	return int(length)
 }
 
 func readRedisRow(reader *bytes.Reader) (*Row, int, error) {
@@ -519,7 +552,7 @@ func readRedisRow(reader *bytes.Reader) (*Row, int, error) {
 
 // Close will remove the persisant storage for a given Sheet completely.
 func (cs *RedisCellStore) Close() error {
-	cells, err := cs.client.ZRANGEString(makeSheetCellsStore(cs.sheetName), 0, -1)
+	cells, err := cs.client.ZRANGEString(cs.SheetCellsName(), 0, -1)
 	if err != nil {
 		return err
 	}
@@ -527,18 +560,18 @@ func (cs *RedisCellStore) Close() error {
 	if err != nil {
 		return err
 	}
-	_, err = cs.client.DEL(makeSheetRowsStore(cs.sheetName))
+	_, err = cs.client.DEL(cs.SheetRowsName())
 	if err != nil {
 		return err
 	}
-	_, err = cs.client.DEL(makeSheetCellsStore(cs.sheetName))
+	_, err = cs.client.DEL(cs.SheetCellsName())
 	if err != nil {
 		return err
 	}
 	return cs.client.Close()
 }
 
-// WriteRow writes a Row to persistant storage.
+// WriteRow writes a Row to persistent storage.
 func (cs *RedisCellStore) WriteRow(r *Row) error {
 	if len(cs.sheetName) == 0 && r.Sheet != nil {
 		cs.sheetName = r.Sheet.Name
@@ -558,6 +591,27 @@ func (cs *RedisCellStore) WriteRow(r *Row) error {
 	if err != nil {
 		return err
 	}
-	_, err = cs.client.HSET(makeSheetRowsStore(r.Sheet.Name), r.makeRowNum(), cs.buf.Bytes())
+	_, err = cs.client.HSET(cs.SheetRowsName(), r.makeRowNum(), cs.buf.Bytes())
 	return err
+}
+
+func (cs *RedisCellStore) SheetRowsName() string {
+	var b strings.Builder
+	b.WriteString(cs.sheetName)
+	b.WriteString(":rows")
+	return b.String()
+}
+
+func (cs *RedisCellStore) SheetCellsName() string {
+	var b strings.Builder
+	b.WriteString(cs.sheetName)
+	b.WriteString(":cells")
+	return b.String()
+}
+
+func (cs *RedisCellStore) CellKey(colIdx int) string {
+	var b strings.Builder
+	b.WriteString(cs.sheetName)
+	b.WriteString(fmt.Sprintf("%06d", colIdx))
+	return b.String()
 }

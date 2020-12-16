@@ -49,7 +49,6 @@ func NewSheetWithCellStore(name string, constructor CellStoreConstructor) (*Shee
 		return nil, fmt.Errorf("NewSheetWithCellStore: %w", err)
 	}
 	return sheet, err
-
 }
 
 // Remove Sheet's dependant resources - if you are done with operations on a sheet this should be called to clear down the Sheet's persistent cache.  Note: if you call this, all further read operaton on the sheet will fail - including any attempt to save the file, or dump it's contents to a byte stream.  Therefore only call this *after* you've saved your changes, of when you're done reading a sheet in a file you don't plan to persist. 
