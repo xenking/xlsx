@@ -1,7 +1,7 @@
 # XLSX
 
 [![Build Status](https://circleci.com/gh/xenking/xlsx.svg?style=svg)](https://circleci.com/gh/xenking/xlsx)
-[![Code Coverage](https://codecov.io/gh/xenking/xlsx)](https://codecov.io/gh/xenking/xlsx/branch/master/graph/badge.svg)
+[![Codecov](https://codecov.io/gh/xenking/xlsx/branch/master/graph/badge.svg?token=MsQrvi4J4e)](https://codecov.io/gh/xenking/xlsx)
 [![Code Report](https://goreportcard.com/badge/github.com/xenking/redis)](https://goreportcard.com/report/github.com/xenking/redis)
 [![Go Reference](https://pkg.go.dev/badge/github.com/xenking/xlsx/v3.svg)](https://pkg.go.dev/github.com/xenking/xlsx/v3)
 [![License](https://github.com/xenking/xlsx#license)](https://img.shields.io/badge/license-bsd-orange.svg)
