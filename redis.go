@@ -354,6 +354,7 @@ func UseRedisCellStore(options RedisCellStoreOption) FileOption {
 }
 
 type RedisCellStoreOption struct {
+	SheetName      string
 	RedisAddr      string
 	CommandTimeout time.Duration
 	DialTimeout    time.Duration
@@ -366,6 +367,7 @@ func NewRedisCellStoreConstructor(options RedisCellStoreOption) CellStoreConstru
 		cs := &RedisCellStore{
 			buf: bytes.NewBuffer([]byte{}),
 		}
+		cs.sheetName = options.SheetName
 		cs.client = redis.NewClient(options.RedisAddr, options.CommandTimeout, options.DialTimeout)
 		return cs, nil
 	}
